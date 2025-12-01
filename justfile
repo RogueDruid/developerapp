@@ -1,38 +1,110 @@
 export COMPOSE_FILE := "docker-compose.local.yml"
 
-## Just does not yet manage signals for subprocesses reliably, which can lead to unexpected behavior.
-## Exercise caution before expanding its usage in production environments.
-## For more information, see https://github.com/casey/just/issues/2473 .
+# Use bash for consistency and process substitution support if needed
+set shell := ["bash", "-cu"]
 
-
-# Default command to list all available commands.
+# Default: show available commands
 default:
     @just --list
 
-# build: Build python image.
+# ---------------------------------------------------------
+# Core Commands
+# ---------------------------------------------------------
+
+# build: Build all images
 build *args:
     @echo "Building python image..."
-    @docker compose build {{args}}
+    @doppler run -- docker compose build {{args}}
 
-# up: Start up containers.
+# up: Start all containers
 up:
-    @echo "Starting up containers..."
-    @docker compose up -d --remove-orphans
+    @echo "Starting containers..."
+    @doppler run -- docker compose up -d --remove-orphans
 
-# down: Stop containers.
+# down: Stop containers
 down:
     @echo "Stopping containers..."
     @docker compose down
 
-# prune: Remove containers and their volumes.
+# prune: Stop and remove volumes
 prune *args:
-    @echo "Killing containers and removing volumes..."
+    @echo "Removing containers and volumes..."
     @docker compose down -v {{args}}
 
-# logs: View container logs
+# logs: Tail logs for all services or specific ones
 logs *args:
-    @docker compose logs -f {{args}}
+    @doppler run -- docker compose logs -f {{args}}
 
-# manage: Executes `manage.py` command.
+# manage: Run Django manage.py commands
 manage +args:
-    @docker compose run --rm django python ./manage.py {{args}}
+    @doppler run -- docker compose run --rm django python manage.py {{args}}
+
+
+## Custom Below
+
+docs:
+    @doppler run -- docker compose -f docker-compose.docs.yml up --build
+    @echo "Documentation server is running at http://localhost:9000"
+
+# backup postgres
+backup-db *args:
+    @doppler run -- docker compose -f docker-compose.local.yml exec postgres backup
+    @echo "Database backup created."
+
+# runs pytest inside the django container
+pytest *args:
+    @doppler run -- docker compose run --rm django pytest {{args}}
+
+# check coverage
+coverage:
+    @doppler run -- docker compose run --rm django coverage report -m
+    @doppler run -- docker compose run --rm django coverage html
+    @echo "HTML coverage report generated at htmlcov/index.html"
+
+unit-test *args:
+    @doppler run -- docker compose run --rm django python manage.py test {{args}}
+
+# ---------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------
+
+# ps: Show running containers
+ps:
+    @docker compose ps
+
+# restart: Restart all containers without rebuilding
+restart:
+    @echo "Restarting containers..."
+    @doppler run -- docker compose down
+    @doppler run -- docker compose up -d
+
+# rebuild: Rebuild images + recreate containers
+rebuild:
+    @echo "Rebuilding containers..."
+    @doppler run -- docker compose down
+    @doppler run -- docker compose build
+    @doppler run -- docker compose up -d --remove-orphans
+
+# shell: Open a shell inside the Django container
+shell:
+    @doppler run -- docker compose exec django bash
+
+# worker-shell: Shell into celeryworker container
+worker-shell:
+    @doppler run -- docker compose exec celeryworker bash
+
+# beat-shell: Shell into celerybeat
+beat-shell:
+    @doppler run -- docker compose exec celerybeat bash
+
+# flower-shell: Shell into flower container (if needed)
+flower-shell:
+    @doppler run -- docker compose exec flower bash
+
+# db-shell: Open psql inside postgres container
+db-shell:
+    @doppler run -- docker compose exec postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+
+# redis-shell: Open redis-cli inside redis container
+redis-shell:
+    @doppler run -- docker compose exec redis redis-cli
