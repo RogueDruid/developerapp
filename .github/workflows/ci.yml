@@ -4,6 +4,16 @@ name: CI
 env:
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
+  USE_DOCKER: ${{ secrets.USE_DOCKER }}
+  IPYTHONDIR: ${{ secrets.IPYTHONDIR }}
+  REDIS_URL: ${{ secrets.REDIS_URL }}
+  CELERY_FLOWER_USER: ${{ secrets.CELERY_FLOWER_USER }}
+  CELERY_FLOWER_PASSWORD: ${{ secrets.CELERY_FLOWER_PASSWORD }}
+  POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
 on:
   pull_request:
