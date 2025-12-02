@@ -1,17 +1,30 @@
+x-env-common: &common_env
+  USE_DOCKER:
+  IPYTHONDIR:
+  REDIS_URL:
+  CELERY_FLOWER_USER:
+  CELERY_FLOWER_PASSWORD:
+  POSTGRES_HOST:
+  POSTGRES_PORT:
+  POSTGRES_DB:
+  POSTGRES_USER:
+  POSTGRES_PASSWORD:
+
+
 services:
   docs:
-    image: developerapp_local_docs
-    container_name: developerapp_local_docs
     build:
       context: .
       dockerfile: ./compose/local/docs/Dockerfile
-    env_file:
-      - ./.envs/.local/.django
+    image: developerapp_local_docs
+    container_name: developerapp_local_docs
+    environment:
+      <<: *common_env
     volumes:
       - /app/.venv
       - ./docs:/docs:z
       - ./config:/app/config:z
       - ./developerapp:/app/developerapp:z
     ports:
-      - '9000:9000'
+      - "9000:9000"
     command: /start-docs

@@ -1,28 +1,53 @@
+# ---------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------
 volumes:
-  production_postgres_data: {}
-  production_postgres_data_backups: {}
-  production_traefik: {}
-  production_django_media: {}
+  postgres_data: {}
+  postgres_backups: {}
+  redis_data: {}
+  django_media: {}
+  traefik_data: {}
 
-  production_redis_data: {}
+# ---------------------------------------------------------
+# Shared environment (provided by Doppler)
+# ---------------------------------------------------------
+x-common-env: &common_env
+  DJANGO_SECRET_KEY:
+  DJANGO_ALLOWED_HOSTS:
+  DJANGO_DEBUG:
+  DATABASE_URL:
+  REDIS_URL:
+  POSTGRES_DB:
+  POSTGRES_USER:
+  POSTGRES_PASSWORD:
+  POSTGRES_HOST:
+  POSTGRES_PORT:
+  CELERY_FLOWER_USER:
+  CELERY_FLOWER_PASSWORD:
 
+# ---------------------------------------------------------
+# Django Base Template
+# ---------------------------------------------------------
+x-django-base: &django_base
+  build:
+    context: .
+    dockerfile: ./compose/production/django/Dockerfile
+  volumes:
+    - django_media:/app/developerapp/media
+  environment:
+    <<: *common_env
+  depends_on:
+    - postgres
+    - redis
 
-
+# ---------------------------------------------------------
+# Services
+# ---------------------------------------------------------
 services:
-  django: &django
-    build:
-      context: .
-      dockerfile: ./compose/production/django/Dockerfile
 
+  django:
+    <<: *django_base
     image: developerapp_production_django
-    volumes:
-      - production_django_media:/app/developerapp/media
-    depends_on:
-      - postgres
-      - redis
-    env_file:
-      - ./.envs/.production/.django
-      - ./.envs/.production/.postgres
     command: /start
 
   postgres:
@@ -31,10 +56,15 @@ services:
       dockerfile: ./compose/production/postgres/Dockerfile
     image: developerapp_production_postgres
     volumes:
-      - production_postgres_data:/var/lib/postgresql/18/docker
-      - production_postgres_data_backups:/backups
-    env_file:
-      - ./.envs/.production/.postgres
+      - postgres_data:/var/lib/postgresql/18/docker
+      - postgres_backups:/backups
+    environment:
+      <<: *common_env
+
+  redis:
+    image: redis:7.2
+    volumes:
+      - redis_data:/data
 
   traefik:
     build:
@@ -44,31 +74,24 @@ services:
     depends_on:
       - django
     volumes:
-      - production_traefik:/etc/traefik/acme
+      - traefik_data:/etc/traefik/acme
     ports:
-      - '0.0.0.0:80:80'
-      - '0.0.0.0:443:443'
-      - '0.0.0.0:5555:5555'
-
-  redis:
-    image: docker.io/redis:7.2
-
-    volumes:
-      - production_redis_data:/data
-
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:5555:5555"
 
   celeryworker:
-    <<: *django
+    <<: *django_base
     image: developerapp_production_celeryworker
     command: /start-celeryworker
 
   celerybeat:
-    <<: *django
+    <<: *django_base
     image: developerapp_production_celerybeat
     command: /start-celerybeat
 
   flower:
-    <<: *django
+    <<: *django_base
     image: developerapp_production_flower
     command: /start-flower
 
@@ -80,4 +103,4 @@ services:
     depends_on:
       - django
     volumes:
-      - production_django_media:/usr/share/nginx/media:ro
+      - django_media:/usr/share/nginx/media:ro
