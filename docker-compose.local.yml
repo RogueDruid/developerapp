@@ -65,7 +65,7 @@ services:
 
 
   redis:
-    image: redis:7.2
+    image: redis:8.4
     container_name: developerapp_local_redis
     volumes:
       - developerapp_local_redis_data:/data
