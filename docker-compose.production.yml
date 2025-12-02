@@ -62,7 +62,7 @@ services:
       <<: *common_env
 
   redis:
-    image: redis:7.2
+    image: redis:8.4
     volumes:
       - redis_data:/data
 
